@@ -6,8 +6,8 @@ from pathlib import Path
 
 import sys
 
-BOARD_PATH = Path(__file__).resolve().parent.parent / "BOARD.md"
-OUTPUT_PATH = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "board.html"
+BOARD_PATH = Path(__file__).resolve().parent / "BOARD.md"
+OUTPUT_PATH = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent / "board.html"
 
 # Brandon's preferred display order
 STATUS_ORDER = ["Code Review", "In Progress", "Todo", "Backlog", "Done"]
