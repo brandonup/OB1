@@ -31,6 +31,12 @@ docs/           — Setup guides, FAQ, companion prompts.
 resources/      — Official companion files and packaged exports.
 ```
 
+## Brain Directory
+
+`brain/` contains all Brain-specific files (board, use cases, memory, scripts). This is Brandon's space — upstream OB1 will never touch it.
+
+- **`brain/archive/`** — Past research, old PRDs, and reference docs. **Do NOT read, reference, or surface content from this folder unless Brandon explicitly asks for it.** Treat it as cold storage.
+
 ## Guard Rails
 
 - **Never modify the core `thoughts` table structure.** Adding columns is fine; altering or dropping existing ones is not.
