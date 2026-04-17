@@ -3,17 +3,16 @@
 ## Tracking
 
 - **System:** Markdown Board
-- **Workflow:** `agents/board-workflow.md`
-- **Board:** `projects/brain/BOARD.md`
+- **Board:** `brain/BOARD.md`
 - **ID prefix:** BRA
 
 ## Overview
 
 Brain is Brandon's personal AI memory system built on Open Brain (OB1). Single `thoughts` table with pgvector embeddings, 4 MCP tools (capture_thought, search_thoughts, list_thoughts, thought_stats), deployed as a Supabase Edge Function. Every AI client connects to the same brain via MCP.
 
-**Repo:** `projects/brain/` (cloned OB1 repo)
-**Build guide:** `projects/brain/docs/builderguide/01-getting-started.md`
-**Server (canonical):** `projects/brain/server/index-openai.ts` — OpenAI direct calls + dedup via `upsert_thought` RPC + CORS + Claude Desktop Accept header patch. Deployed to `supabase/functions/open-brain-mcp/`.
+**Build guide:** `docs/01-getting-started.md`
+**Server (canonical):** `server/index-openai.ts` — OpenAI direct calls + dedup via `upsert_thought` RPC + CORS + Claude Desktop Accept header patch. Deployed to `supabase/functions/open-brain-mcp/`.
+**Brain files:** `brain/` — board, docs, archive, use cases (upstream OB1 never touches this directory)
 **Supabase project ref:** yueqgweyyajtymfarswm
 **MCP endpoint:** `https://yueqgweyyajtymfarswm.supabase.co/functions/v1/open-brain-mcp`
 
@@ -30,6 +29,6 @@ Brain is Brandon's personal AI memory system built on Open Brain (OB1). Single `
 
 - 2026-04-05: Use OpenAI directly (not OpenRouter) for embeddings and metadata extraction.
 - 2026-04-05: Use Next.js dashboard (not SvelteKit). Requires building `open-brain-rest` REST API gateway Edge Function.
-- 2026-04-05: Use Markdown Board for tracking (not Linear). Board at `projects/brain/BOARD.md`.
+- 2026-04-05: Use Markdown Board for tracking (not Linear). Board at `brain/BOARD.md`.
 - 2026-04-05: Kinetic Brain MCP is separate/unrelated. Brain is a fresh deploy.
 - 2026-04-05: Lowered `match_thoughts` SQL default threshold from 0.7 to 0.5 to match MCP tool default.
