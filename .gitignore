@@ -14,3 +14,7 @@ sync-log.json
 
 # Build artifacts
 deno.lock
+
+# Local AI tool state
+.claude/
+.learnings/

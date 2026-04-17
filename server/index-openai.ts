@@ -8,41 +8,41 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 const MCP_ACCESS_KEY = Deno.env.get("MCP_ACCESS_KEY")!;
 
-const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+const OPENAI_BASE = "https://api.openai.com/v1";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function getEmbedding(text: string): Promise<number[]> {
-  const r = await fetch(`${OPENROUTER_BASE}/embeddings`, {
+  const r = await fetch(`${OPENAI_BASE}/embeddings`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "openai/text-embedding-3-small",
+      model: "text-embedding-3-small",
       input: text,
     }),
   });
   if (!r.ok) {
     const msg = await r.text().catch(() => "");
-    throw new Error(`OpenRouter embeddings failed: ${r.status} ${msg}`);
+    throw new Error(`OpenAI embeddings failed: ${r.status} ${msg}`);
   }
   const d = await r.json();
   return d.data[0].embedding;
 }
 
 async function extractMetadata(text: string): Promise<Record<string, unknown>> {
-  const r = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+  const r = await fetch(`${OPENAI_BASE}/chat/completions`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
+      model: "gpt-4o-mini",
       response_format: { type: "json_object" },
       messages: [
         {
@@ -52,7 +52,7 @@ async function extractMetadata(text: string): Promise<Record<string, unknown>> {
 - "action_items": array of implied to-dos (empty if none)
 - "dates_mentioned": array of dates YYYY-MM-DD (empty if none)
 - "topics": array of 1-3 short topic tags (always at least one)
-- "type": one of "observation", "task", "idea", "reference", "person_note", "person", "reflection"
+- "type": one of "observation", "task", "idea", "reference", "person_note"
 Only extract what's explicitly there.`,
         },
         { role: "user", content: text },
@@ -113,24 +113,19 @@ server.registerTool(
       const results = data.map(
         (
           t: {
-            id: string;
             content: string;
             metadata: Record<string, unknown>;
             similarity: number;
             created_at: string;
-            status: string | null;
-            importance: string | null;
           },
           i: number
         ) => {
           const m = t.metadata || {};
           const parts = [
-            `--- Result ${i + 1} | #${t.id} (${(t.similarity * 100).toFixed(1)}% match) ---`,
+            `--- Result ${i + 1} (${(t.similarity * 100).toFixed(1)}% match) ---`,
             `Captured: ${new Date(t.created_at).toLocaleDateString()}`,
             `Type: ${m.type || "unknown"}`,
           ];
-          if (t.status) parts.push(`Status: ${t.status}`);
-          if (t.importance) parts.push(`Importance: ${t.importance}`);
           if (Array.isArray(m.topics) && m.topics.length)
             parts.push(`Topics: ${(m.topics as string[]).join(", ")}`);
           if (Array.isArray(m.people) && m.people.length)
@@ -168,19 +163,17 @@ server.registerTool(
       "List recently captured thoughts with optional filters by type, topic, person, or time range.",
     inputSchema: {
       limit: z.number().optional().default(10),
-      type: z.string().optional().describe("Filter by type: observation, task, idea, reference, person_note, person, reflection"),
+      type: z.string().optional().describe("Filter by type: observation, task, idea, reference, person_note"),
       topic: z.string().optional().describe("Filter by topic tag"),
       person: z.string().optional().describe("Filter by person mentioned"),
       days: z.number().optional().describe("Only thoughts from the last N days"),
-      status: z.string().optional().describe("Filter by workflow status: active, review, planning, done, archived"),
-      exclude_status: z.string().optional().describe("Exclude thoughts with this status (e.g., 'done' to hide completed tasks)"),
     },
   },
-  async ({ limit, type, topic, person, days, status, exclude_status }) => {
+  async ({ limit, type, topic, person, days }) => {
     try {
       let q = supabase
         .from("thoughts")
-        .select("id, content, metadata, created_at, status, importance")
+        .select("content, metadata, created_at")
         .order("created_at", { ascending: false })
         .limit(limit);
 
@@ -192,8 +185,6 @@ server.registerTool(
         since.setDate(since.getDate() - days);
         q = q.gte("created_at", since.toISOString());
       }
-      if (status) q = q.eq("status", status);
-      if (exclude_status) q = q.neq("status", exclude_status);
 
       const { data, error } = await q;
 
@@ -210,14 +201,12 @@ server.registerTool(
 
       const results = data.map(
         (
-          t: { id: string; content: string; metadata: Record<string, unknown>; created_at: string; status: string | null; importance: string | null },
+          t: { content: string; metadata: Record<string, unknown>; created_at: string },
           i: number
         ) => {
           const m = t.metadata || {};
           const tags = Array.isArray(m.topics) ? (m.topics as string[]).join(", ") : "";
-          const statusStr = t.status ? ` [${t.status}]` : "";
-          const impStr = t.importance ? ` (${t.importance})` : "";
-          return `${i + 1}. #${t.id} [${new Date(t.created_at).toLocaleDateString()}] (${m.type || "??"}${tags ? " - " + tags : ""})${statusStr}${impStr}\n   ${t.content}`;
+          return `${i + 1}. [${new Date(t.created_at).toLocaleDateString()}] (${m.type || "??"}${tags ? " - " + tags : ""})\n   ${t.content}`;
         }
       );
 
@@ -309,7 +298,7 @@ server.registerTool(
   }
 );
 
-// Tool 4: Capture Thought
+// Tool 4: Capture Thought (with dedup via upsert_thought RPC)
 server.registerTool(
   "capture_thought",
   {
@@ -367,109 +356,6 @@ server.registerTool(
     } catch (err: unknown) {
       return {
         content: [{ type: "text" as const, text: `Error: ${(err as Error).message}` }],
-        isError: true,
-      };
-    }
-  }
-);
-
-// Tool 5: Progress Task (status & importance updates)
-server.registerTool(
-  "progress_task",
-  {
-    title: "Progress Task",
-    description:
-      "Update the status and/or importance of a task thought. Use this to mark tasks as active, waiting (review), paused (planning), done, or archived. Requires the thought ID.",
-    inputSchema: {
-      thought_id: z.string().describe("The UUID of the thought to update (shown as #id in search/list results)"),
-      status: z
-        .enum(["active", "review", "planning", "done", "archived"])
-        .optional()
-        .describe(
-          "New status: active (open), review (waiting on someone), planning (paused/deferred), done (completed), archived (no longer relevant)"
-        ),
-      importance: z
-        .enum(["low", "med", "high"])
-        .optional()
-        .describe("Priority level: low, med, high"),
-    },
-  },
-  async ({ thought_id, status, importance }) => {
-    try {
-      if (!status && !importance) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: "Nothing to update — provide a status and/or importance.",
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      const updates: Record<string, unknown> = {};
-      if (status) {
-        updates.status = status;
-        updates.status_updated_at = new Date().toISOString();
-      }
-      if (importance) {
-        updates.importance = importance;
-      }
-
-      const { data, error } = await supabase
-        .from("thoughts")
-        .update(updates)
-        .eq("id", thought_id)
-        .select("id, content, status, importance, metadata")
-        .single();
-
-      if (error) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to update thought ${thought_id}: ${error.message}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      if (!data) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Thought ${thought_id} not found.`,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      const meta = (data.metadata || {}) as Record<string, unknown>;
-      const parts = [`Updated thought ${thought_id}:`];
-      if (status) parts.push(`Status → ${status}`);
-      if (importance) parts.push(`Importance → ${importance}`);
-      parts.push(
-        `Content: ${data.content.substring(0, 100)}${data.content.length > 100 ? "..." : ""}`
-      );
-      if (Array.isArray(meta.people) && meta.people.length) {
-        parts.push(`People: ${(meta.people as string[]).join(", ")}`);
-      }
-
-      return {
-        content: [{ type: "text" as const, text: parts.join("\n") }],
-      };
-    } catch (err: unknown) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${(err as Error).message}`,
-          },
-        ],
         isError: true,
       };
     }

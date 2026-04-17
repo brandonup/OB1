@@ -1,0 +1,211 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Open Brain API",
+    "description": "Personal thought database — capture, search, list, and analyze thoughts.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://yueqgweyyajtymfarswm.supabase.co/functions/v1/brain-api"
+    }
+  ],
+  "paths": {
+    "/capture": {
+      "post": {
+        "operationId": "captureThought",
+        "summary": "Save a thought to the brain",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "The thought to capture."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thought captured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "type": { "type": "string" },
+                    "topics": { "type": "array", "items": { "type": "string" } },
+                    "people": { "type": "array", "items": { "type": "string" } },
+                    "action_items": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "post": {
+        "operationId": "searchThoughts",
+        "summary": "Semantic search across all thoughts",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["query"],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "What to search for."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "default": 10
+                  },
+                  "threshold": {
+                    "type": "number",
+                    "default": 0.5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "content": { "type": "string" },
+                          "similarity": { "type": "integer" },
+                          "captured": { "type": "string" },
+                          "type": { "type": "string" },
+                          "topics": { "type": "array", "items": { "type": "string" } },
+                          "people": { "type": "array", "items": { "type": "string" } },
+                          "action_items": { "type": "array", "items": { "type": "string" } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/list": {
+      "post": {
+        "operationId": "listThoughts",
+        "summary": "List recent thoughts with optional filters",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "limit": { "type": "integer", "default": 10 },
+                  "type": { "type": "string", "description": "Filter: observation, task, idea, reference, person_note" },
+                  "topic": { "type": "string", "description": "Filter by topic tag" },
+                  "person": { "type": "string", "description": "Filter by person mentioned" },
+                  "days": { "type": "integer", "description": "Only thoughts from last N days" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of thoughts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "content": { "type": "string" },
+                          "captured": { "type": "string" },
+                          "type": { "type": "string" },
+                          "topics": { "type": "array", "items": { "type": "string" } },
+                          "people": { "type": "array", "items": { "type": "string" } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats": {
+      "post": {
+        "operationId": "getThoughtStats",
+        "summary": "Get thought statistics",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "placeholder": { "type": "string", "description": "No parameters needed. Send empty object." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Statistics summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": { "type": "integer" },
+                    "date_range": {
+                      "type": "object",
+                      "properties": {
+                        "oldest": { "type": "string" },
+                        "newest": { "type": "string" }
+                      }
+                    },
+                    "types": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "count": { "type": "integer" } } } },
+                    "topics": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "count": { "type": "integer" } } } },
+                    "people": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "count": { "type": "integer" } } } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
